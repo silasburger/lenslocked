@@ -2,80 +2,85 @@ package main
 
 import (
 	"fmt"
-	"html/template"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/silasburger/lenslocked/controllers"
+	"github.com/silasburger/lenslocked/templates"
+	"github.com/silasburger/lenslocked/views"
 )
 
-func executeTemplate(w http.ResponseWriter, filePath string) {
-	w.Header().Set("Content-Type", "text/html")
-	tpl, err := template.ParseFiles(filePath)
-	if err != nil {
-		log.Printf("parsing template: %v", err)
-		http.Error(w, "There was an error parsing the template.", http.StatusInternalServerError)
-		return
-	}
-	err = tpl.Execute(w, nil)
-	if err != nil {
-		log.Printf("executing template: %v", err)
-		http.Error(w, "There was an error executing the template.", http.StatusInternalServerError)
-		return
-	}
-}
-
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	executeTemplate(w, "templates/home.gohtml")
-}
-
-func contactHandler(w http.ResponseWriter, r *http.Request) {
-	executeTemplate(w, "templates/contact.gohtml")
-}
-func faqHandler(w http.ResponseWriter, r *http.Request) {
-	executeTemplate(w, "templates/faq.gohtml")
-}
-
-func galleriesHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-
-	fmt.Fprint(w, chi.URLParam(r, "id"))
-}
-
-// func pathHandler(w http.ResponseWriter, r *http.Request) {
-// 	switch r.URL.Path {
-// 	case "/":
-// 		homeHandler(w, r)
-// 	case "/contact":
-// 		contactHandler(w, r)
-// 	default:
-// 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+// func executeTemplate(w http.ResponseWriter, filePath string) {
+// 	w.Header().Set("Content-Type", "text/html")
+// 	tpl, err := views.Parse(filePath)
+// 	if err != nil {
+// 		log.Printf("parsing template: %v", err)
+// 		http.Error(w, "There was an error parsing the template.", http.StatusInternalServerError)
+// 		return
 // 	}
-
+// 	tpl.Execute(w, nil)
 // }
 
-// type Router struct {
+// func homeHandler(w http.ResponseWriter, r *http.Request) {
+// 	executeTemplate(w, "templates/home.gohtml")
 // }
 
-// func (router Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// 	switch r.URL.Path {
-// 	case "/":
-// 		homeHandler(w, r)
-// 	case "/contact":
-// 		contactHandler(w, r)
-// 	default:
-// 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-// 	}
+// func contactHandler(w http.ResponseWriter, r *http.Request) {
+// 	executeTemplate(w, "templates/contact.gohtml")
 // }
+// func faqHandler(w http.ResponseWriter, r *http.Request) {
+// 	executeTemplate(w, "templates/faq.gohtml")
+// }
+
+// func galleriesHandler(w http.ResponseWriter, r *http.Request) {
+// 	w.Header().Set("Content-Type", "text/plain")
+
+// 	fmt.Fprint(w, chi.URLParam(r, "id"))
+// }
+
+// // func pathHandler(w http.ResponseWriter, r *http.Request) {
+// // 	switch r.URL.Path {
+// // 	case "/":
+// // 		homeHandler(w, r)
+// // 	case "/contact":
+// // 		contactHandler(w, r)
+// // 	default:
+// // 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+// // 	}
+
+// // }
+
+// // type Router struct {
+// // }
+
+// // func (router Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// // 	switch r.URL.Path {
+// // 	case "/":
+// // 		homeHandler(w, r)
+// // 	case "/contact":
+// // 		contactHandler(w, r)
+// // 	default:
+// // 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+// // 	}
+// // }
 
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/", homeHandler)
-	r.Get("/contact", contactHandler)
-	r.Get("/faq", faqHandler)
-	r.Get("/galleries/{id}", galleriesHandler)
+
+	tpl := views.Must(views.ParseFS(templates.FS, "home.gohtml"))
+	r.Get("/", controllers.StaticHandler(tpl))
+
+	tpl = views.Must(views.ParseFS(templates.FS, "contact.gohtml"))
+	r.Get("/contact", controllers.StaticHandler(tpl))
+
+	tpl = views.Must(views.ParseFS(templates.FS, "faq.gohtml"))
+	r.Get("/faq", controllers.StaticHandler(tpl))
+
+	tpl = views.Must(views.ParseFS(templates.FS, "greeting.gohtml"))
+	r.Get("/greeting", controllers.StaticHandler(tpl))
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Page not found", http.StatusNotFound)
 	})
