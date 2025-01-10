@@ -23,8 +23,8 @@ func Parse(filePath string) (Template, error) {
 	}, nil
 }
 
-func ParseFS(fs embed.FS, fileString string) (Template, error) {
-	tpl, err := template.ParseFS(fs, fileString)
+func ParseFS(fs embed.FS, patterns ...string) (Template, error) {
+	tpl, err := template.ParseFS(fs, patterns...)
 	if err != nil {
 		return Template{}, fmt.Errorf("parsing embedded template: %w", err)
 	}
