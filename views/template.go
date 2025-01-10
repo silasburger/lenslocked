@@ -10,7 +10,6 @@ import (
 
 type Template struct {
 	htmlTpl *template.Template
-	Path    string
 }
 
 func Parse(filePath string) (Template, error) {
