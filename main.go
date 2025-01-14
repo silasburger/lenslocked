@@ -1,71 +1,43 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/silasburger/lenslocked/controllers"
 	"github.com/silasburger/lenslocked/templates"
 	"github.com/silasburger/lenslocked/views"
 )
 
-// func executeTemplate(w http.ResponseWriter, filePath string) {
-// 	w.Header().Set("Content-Type", "text/html")
-// 	tpl, err := views.Parse(filePath)
-// 	if err != nil {
-// 		log.Printf("parsing template: %v", err)
-// 		http.Error(w, "There was an error parsing the template.", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	tpl.Execute(w, nil)
-// }
+type PGConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Database string
+	SSLMode  string
+}
 
-// func homeHandler(w http.ResponseWriter, r *http.Request) {
-// 	executeTemplate(w, "templates/home.gohtml")
-// }
-
-// func contactHandler(w http.ResponseWriter, r *http.Request) {
-// 	executeTemplate(w, "templates/contact.gohtml")
-// }
-// func faqHandler(w http.ResponseWriter, r *http.Request) {
-// 	executeTemplate(w, "templates/faq.gohtml")
-// }
-
-// func galleriesHandler(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "text/plain")
-
-// 	fmt.Fprint(w, chi.URLParam(r, "id"))
-// }
-
-// // func pathHandler(w http.ResponseWriter, r *http.Request) {
-// // 	switch r.URL.Path {
-// // 	case "/":
-// // 		homeHandler(w, r)
-// // 	case "/contact":
-// // 		contactHandler(w, r)
-// // 	default:
-// // 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-// // 	}
-
-// // }
-
-// // type Router struct {
-// // }
-
-// // func (router Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// // 	switch r.URL.Path {
-// // 	case "/":
-// // 		homeHandler(w, r)
-// // 	case "/contact":
-// // 		contactHandler(w, r)
-// // 	default:
-// // 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-// // 	}
-// // }
+func (c PGConfig) String() string {
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s database=%s sslmode=%s", c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode)
+}
 
 func main() {
+	pgconfig := PGConfig{
+		Host:     "localhost",
+		Port:     "5432",
+		User:     "baloo",
+		Password: "junglebook",
+		Database: "lenslocked",
+		SSLMode:  "disabled",
+	}
+
+	sql.Open("pgx", pgconfig.String())
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -82,6 +54,8 @@ func main() {
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signup.gohtml"))
 	UsersC.Templates.New = tpl
 	r.Get("/signup", UsersC.New)
+
+	r.Post("/signup", UsersC.Create)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
 	r.Get("/greeting", controllers.StaticHandler(tpl))
