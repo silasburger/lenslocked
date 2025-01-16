@@ -14,38 +14,91 @@ func main() {
 	}
 	defer db.Close()
 
-	type Order struct {
-		ID          int
-		UserID      int
-		Amount      int
-		Description string
+	type Post struct {
+		ID         int
+		UserID     int
+		Content    string
+		ParentPost bool
 	}
 
-	var orders []Order
-	userID := 1
+	type User struct {
+		ID       int
+		Username string
+	}
 
-	rows, err := db.Query(`
-		SELECT id, amount, description 
-		FROM orders 
-		WHERE user_id=$1`, userID)
+	// _, err = db.Exec(`
+	// CREATE TABLE IF NOT EXISTS posts (
+	// 	id SERIAL PRIMARY KEY,
+	// 	user_id INT NOT NULL,
+	// 	content TEXT NOT NULL,
+	// 	parent_post BOOLEAN NOT NULL
+	// );
+
+	// CREATE TABLE IF NOT EXISTS users (
+	// 	id SERIAL PRIMARY KEY,
+	// 	email TEXT NOT NULL
+	// );`)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	userID := 1
+	var posts []Post
+
+	row := db.QueryRow(`Select id, username from users WHERE id=$1`, userID)
+	var user User
+	user.ID = userID
+	err = row.Scan(&user.ID, &user.Username)
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Printf("user %v", user)
+
+	rows, err := db.Query(`Select id, user_id, content, parent_post from posts`)
 	defer rows.Close()
+
 	for rows.Next() {
-		var order Order
-		order.UserID = userID
-		err := rows.Scan(&order.ID, &order.Amount, &order.Description)
+		var post Post
+		err := rows.Scan(&post.ID, &post.UserID, &post.Content, &post.ParentPost)
 		if err != nil {
 			panic(err)
 		}
-		orders = append(orders, order)
+		posts = append(posts, post)
 	}
-	err = rows.Err()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("order:", orders)
+
+	fmt.Println("posts: ", posts)
+
+	// _, err = db.Exec(`INSERT INTO posts(user_id, content, parent_post) VALUES($1, $2, $3);`, userId, "hello world!", true)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// var orders []Order
+	// userID := 1
+
+	// rows, err := db.Query(`
+	// 	SELECT id, amount, description
+	// 	FROM orders
+	// 	WHERE user_id=$1`, userID)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer rows.Close()
+	// for rows.Next() {
+	// 	var order Order
+	// 	order.UserID = userID
+	// 	err := rows.Scan(&order.ID, &order.Amount, &order.Description)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	orders = append(orders, order)
+	// }
+	// err = rows.Err()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println("order:", orders)
 
 	// userId := 1
 
