@@ -1,30 +1,39 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/silasburger/lenslocked/models"
 )
 
 func main() {
-	db, err := sql.Open("pgx", "host=localhost port=5432 user=baloo password=junglebook dbname=lenslocked sslmode=disable")
+
+	cfg := models.DefaultPostgresConfig()
+	db, err := models.Open(cfg)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	type Post struct {
-		ID         int
-		UserID     int
-		Content    string
-		ParentPost bool
+	userService := models.UserService{
+		DB: db,
 	}
 
-	type User struct {
-		ID       int
-		Username string
-	}
+	user, err := userService.Create("bob3@bob.com", "secret")
+
+	fmt.Println(user, err)
+
+	// type Post struct {
+	// 	ID         int
+	// 	UserID     int
+	// 	Content    string
+	// 	ParentPost bool
+	// }
+
+	// type User struct {
+	// 	ID       int
+	// 	Username string
+	// }
 
 	// _, err = db.Exec(`
 	// CREATE TABLE IF NOT EXISTS posts (
@@ -42,32 +51,32 @@ func main() {
 	// 	panic(err)
 	// }
 
-	userID := 1
-	var posts []Post
+	// userID := 1
+	// var posts []Post
 
-	row := db.QueryRow(`Select id, username from users WHERE id=$1`, userID)
-	var user User
-	user.ID = userID
-	err = row.Scan(&user.ID, &user.Username)
-	if err != nil {
-		panic(err)
-	}
+	// row := db.QueryRow(`Select id, username from users WHERE id=$1`, userID)
+	// var user User
+	// user.ID = userID
+	// err = row.Scan(&user.ID, &user.Username)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	fmt.Printf("user %v", user)
+	// fmt.Printf("user %v", user)
 
-	rows, err := db.Query(`Select id, user_id, content, parent_post from posts`)
-	defer rows.Close()
+	// rows, err := db.Query(`Select id, user_id, content, parent_post from posts`)
+	// defer rows.Close()
 
-	for rows.Next() {
-		var post Post
-		err := rows.Scan(&post.ID, &post.UserID, &post.Content, &post.ParentPost)
-		if err != nil {
-			panic(err)
-		}
-		posts = append(posts, post)
-	}
+	// for rows.Next() {
+	// 	var post Post
+	// 	err := rows.Scan(&post.ID, &post.UserID, &post.Content, &post.ParentPost)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	posts = append(posts, post)
+	// }
 
-	fmt.Println("posts: ", posts)
+	// fmt.Println("posts: ", posts)
 
 	// _, err = db.Exec(`INSERT INTO posts(user_id, content, parent_post) VALUES($1, $2, $3);`, userId, "hello world!", true)
 	// if err != nil {
