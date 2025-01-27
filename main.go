@@ -47,7 +47,7 @@ func main() {
 	r.Post("/signup", UsersC.Create)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signin.gohtml"))
-	UsersC.Templates.New = tpl
+	UsersC.Templates.SignIn = tpl
 	r.Get("/signin", UsersC.SignIn)
 
 	r.Post("/signin", UsersC.ProcessSignIn)
