@@ -27,7 +27,7 @@ func main() {
 	sessionService := models.SessionService{
 		DB: db,
 	}
-	UsersC := controllers.Users{
+	usersC := controllers.Users{
 		UsersService:   &userService,
 		SessionService: &sessionService,
 	}
@@ -45,21 +45,21 @@ func main() {
 	r.Get("/faq", controllers.FAQ(tpl))
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signup.gohtml"))
-	UsersC.Templates.New = tpl
-	r.Get("/signup", UsersC.New)
+	usersC.Templates.New = tpl
+	r.Get("/signup", usersC.New)
 
-	r.Post("/signup", UsersC.Create)
+	r.Post("/signup", usersC.Create)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signin.gohtml"))
-	UsersC.Templates.SignIn = tpl
-	r.Get("/signin", UsersC.SignIn)
+	usersC.Templates.SignIn = tpl
+	r.Get("/signin", usersC.SignIn)
 
-	r.Post("/signin", UsersC.ProcessSignIn)
+	r.Post("/signin", usersC.ProcessSignIn)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
 	r.Get("/greeting", controllers.StaticHandler(tpl))
 
-	r.Get("/users/me", UsersC.CurrentUser)
+	r.Get("/users/me", usersC.CurrentUser)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Page not found", http.StatusNotFound)

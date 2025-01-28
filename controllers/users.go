@@ -50,7 +50,7 @@ func (u Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setCookie(w, CookieSession, session.Token)
-	fmt.Fprintf(w, "User account authenticated: %v", user)
+	http.Redirect(w, r, "/users/me", http.StatusFound)
 }
 
 func (u Users) Create(w http.ResponseWriter, r *http.Request) {
@@ -91,5 +91,5 @@ func (u Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "Current user: %v\n", user.Email)
+	fmt.Fprintf(w, "Current user: %v\n", user)
 }
