@@ -24,8 +24,12 @@ func main() {
 	userService := models.UserService{
 		DB: db,
 	}
+	sessionService := models.SessionService{
+		DB: db,
+	}
 	UsersC := controllers.Users{
-		UsersService: &userService,
+		UsersService:   &userService,
+		SessionService: &sessionService,
 	}
 
 	r := chi.NewRouter()
