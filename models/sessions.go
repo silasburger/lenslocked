@@ -1,16 +1,8 @@
 package models
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
-
-	"github.com/silasburger/lenslocked/rand"
-)
-
-const (
-	MinBytesPerToken = 32
 )
 
 type Session struct {
@@ -24,19 +16,15 @@ type Session struct {
 }
 
 type SessionService struct {
-	DB            *sql.DB
-	BytesPerToken int
+	DB           *sql.DB
+	TokenManager TokenManager
 }
 
 // Create will create a new session for the user provided. The session token
 // will be returned as the Token field on the Session type, but only the hashed
 // session token is stored in the database.
 func (ss *SessionService) Create(userID int) (*Session, error) {
-	bytesPerToken := ss.BytesPerToken
-	if bytesPerToken < MinBytesPerToken {
-		bytesPerToken = MinBytesPerToken
-	}
-	token, err := rand.String(bytesPerToken)
+	token, tokenHash, err := ss.TokenManager.New()
 	if err != nil {
 		return nil, fmt.Errorf("create: %w", err)
 	}
@@ -44,7 +32,7 @@ func (ss *SessionService) Create(userID int) (*Session, error) {
 	session := Session{
 		UserID:    userID,
 		Token:     token,
-		TokenHash: ss.hash(token),
+		TokenHash: tokenHash,
 	}
 
 	row := ss.DB.QueryRow(`
@@ -67,7 +55,7 @@ func (ss *SessionService) Create(userID int) (*Session, error) {
 
 func (ss *SessionService) User(token string) (*User, error) {
 	var user User
-	tokenHash := ss.hash(token)
+	tokenHash := ss.TokenManager.Hash(token)
 	row := ss.DB.QueryRow(`
 		SELECT 
 			users.id,
@@ -84,8 +72,13 @@ func (ss *SessionService) User(token string) (*User, error) {
 	return &user, nil
 }
 
-func (ss *SessionService) hash(token string) string {
-	tokenHash := sha256.Sum256([]byte(token))
-	// base64 encode the data into a string
-	return base64.URLEncoding.EncodeToString(tokenHash[:])
+func (ss *SessionService) Delete(token string) error {
+	tokenHash := ss.TokenManager.Hash(token)
+	_, err := ss.DB.Exec(`
+		DELETE FROM sessions
+		WHERE token_hash = $1;`, tokenHash)
+	if err != nil {
+		return fmt.Errorf("delete: %w", err)
+	}
+	return nil
 }

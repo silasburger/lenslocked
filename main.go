@@ -24,8 +24,10 @@ func main() {
 	userService := models.UserService{
 		DB: db,
 	}
+	tokenManager := models.TokenManager{}
 	sessionService := models.SessionService{
-		DB: db,
+		DB:           db,
+		TokenManager: tokenManager,
 	}
 	usersC := controllers.Users{
 		UsersService:   &userService,
@@ -55,10 +57,13 @@ func main() {
 	r.Get("/signin", usersC.SignIn)
 
 	r.Post("/signin", usersC.ProcessSignIn)
+	r.Post("/signout", usersC.ProcessSignOut)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
 	r.Get("/greeting", controllers.StaticHandler(tpl))
 
+	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "users/me.gohtml"))
+	usersC.Templates.CurrentUser = tpl
 	r.Get("/users/me", usersC.CurrentUser)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
