@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/csrf"
 	"github.com/silasburger/lenslocked/controllers"
+	"github.com/silasburger/lenslocked/migrations"
 	"github.com/silasburger/lenslocked/models"
 	"github.com/silasburger/lenslocked/templates"
 	"github.com/silasburger/lenslocked/views"
@@ -15,11 +16,17 @@ import (
 
 func main() {
 	cfg := models.DefaultPostgresConfig()
+	fmt.Println(cfg)
 	db, err := models.Open(cfg)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
+
+	err = models.MigrateFS(db, migrations.FS, ".")
+	if err != nil {
+		panic(err)
+	}
 
 	userService := models.UserService{
 		DB: db,
