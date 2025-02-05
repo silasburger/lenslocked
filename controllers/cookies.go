@@ -20,7 +20,6 @@ func newCookie(name, value string) *http.Cookie {
 }
 
 func setCookie(w http.ResponseWriter, name string, value string) {
-	fmt.Println(name)
 	cookie := newCookie(name, value)
 	http.SetCookie(w, cookie)
 }
