@@ -17,7 +17,7 @@ type Session struct {
 
 type SessionService struct {
 	DB           *sql.DB
-	TokenManager TokenManager
+	TokenManager *TokenManager
 }
 
 // Create will create a new session for the user provided. The session token

@@ -25,7 +25,10 @@ func main() {
 		return
 	}
 
-	pgConfig := models.DefaultPostgresConfig()
+	pgConfig, err := models.DefaultPostgresConfig()
+	if err != nil {
+		log.Fatalf("goose: failed to load Postgres config: %v", err)
+	}
 	dbString := pgConfig.String()
 
 	command := args[0]

@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/csrf"
+	"github.com/joho/godotenv"
 	"github.com/silasburger/lenslocked/controllers"
 	"github.com/silasburger/lenslocked/migrations"
 	"github.com/silasburger/lenslocked/models"
@@ -14,11 +17,60 @@ import (
 	"github.com/silasburger/lenslocked/views"
 )
 
+type config struct {
+	PSQL models.PostgresConfig
+	SMTP models.SMTPConfig
+	CSRF struct {
+		Key    string
+		Secure bool
+	}
+	Server struct {
+		Address string
+	}
+}
+
+func loadEnvConfig() (config, error) {
+	var cfg config
+	err := godotenv.Load()
+	if err != nil {
+		return cfg, err
+	}
+
+	cfg.PSQL, err = models.DefaultPostgresConfig()
+	if err != nil {
+		return cfg, err
+	}
+
+	cfg.SMTP.Host = os.Getenv("SMTP_HOST")
+	portStr := os.Getenv("SMTP_PORT")
+	cfg.SMTP.Port, err = strconv.Atoi(portStr)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.SMTP.Username = os.Getenv("SMTP_USERNAME")
+	cfg.SMTP.Password = os.Getenv("SMTP_PASSWORD")
+
+	cfg.CSRF.Key = os.Getenv("CSRF_KEY")
+	secureStr := os.Getenv("CSRF_SECURE")
+	secure, err := strconv.ParseBool(secureStr)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.CSRF.Secure = secure
+
+	cfg.Server.Address = os.Getenv("SERVER_ADDRESS")
+	return cfg, nil
+}
+
 func main() {
+	cfg, err := loadEnvConfig()
+	if err != nil {
+		panic(err)
+	}
 	// Set up database connection
-	cfg := models.DefaultPostgresConfig()
-	fmt.Println(cfg)
-	db, err := models.Open(cfg)
+	// cfg := models.DefaultPostgresConfig()
+	// fmt.Println(cfg)
+	db, err := models.Open(cfg.PSQL)
 	if err != nil {
 		panic(err)
 	}
@@ -30,33 +82,38 @@ func main() {
 	}
 
 	// Set up service
-	userService := models.UserService{
+	userService := &models.UserService{
 		DB: db,
 	}
-	tokenManager := models.TokenManager{}
-	sessionService := models.SessionService{
+	sessionService := &models.SessionService{
 		DB:           db,
-		TokenManager: tokenManager,
+		TokenManager: &models.TokenManager{},
 	}
+	pwResetService := &models.PasswordResetService{
+		DB: db,
+	}
+	emailService := models.NewEmailService(cfg.SMTP)
 
 	// Set up middleware
-	csrfKey := "le4ZmpwOA80pSiVU8qLWJkjonlEm2MWZ"
-	csrfMw := csrf.Protect([]byte(csrfKey))
+	csrfMw := csrf.Protect([]byte(cfg.CSRF.Key))
 	// TODO: set to true before deployment
-	csrf.Secure(false)
+	csrf.Secure(cfg.CSRF.Secure)
 
 	umw := controllers.UserMiddleware{
-		SessionService: &sessionService,
+		SessionService: sessionService,
 	}
 
 	// Set up controllers
 	usersC := controllers.Users{
-		UsersService:   &userService,
-		SessionService: &sessionService,
+		UsersService:         userService,
+		SessionService:       sessionService,
+		PasswordResetService: pwResetService,
+		EmailService:         emailService,
 	}
 	usersC.Templates.SignIn = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signin.gohtml"))
 	usersC.Templates.New = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "signup.gohtml"))
 	usersC.Templates.CurrentUser = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "users/me.gohtml"))
+	usersC.Templates.ForgotPassword = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "forgot-pw.gohtml"))
 
 	// Ser up router and routes
 
@@ -84,6 +141,9 @@ func main() {
 	r.Post("/signin", usersC.ProcessSignIn)
 	r.Post("/signout", usersC.ProcessSignOut)
 
+	r.Get("/forgot-pw", usersC.ForgotPassword)
+	r.Post("/forgot-pw", usersC.ProcessForgotPassword)
+
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
 	r.Get("/greeting", controllers.StaticHandler(tpl))
 
@@ -96,7 +156,6 @@ func main() {
 		http.Error(w, "Page not found", http.StatusNotFound)
 	})
 
-	//
 	fmt.Println("Starting server on 3000...")
-	http.ListenAndServe(":3000", r)
+	http.ListenAndServe(cfg.Server.Address, r)
 }

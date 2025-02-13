@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"os"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 )
 
@@ -21,15 +23,20 @@ func Open(config PostgresConfig) (*sql.DB, error) {
 	return db, nil
 }
 
-func DefaultPostgresConfig() PostgresConfig {
-	return PostgresConfig{
-		Host:     "localhost",
-		Port:     "5432",
-		User:     "baloo",
-		Password: "junglebook",
-		Database: "lenslocked",
-		SSLMode:  "disable",
+func DefaultPostgresConfig() (PostgresConfig, error) {
+	var cfg PostgresConfig
+	err := godotenv.Load()
+	if err != nil {
+		return cfg, err
 	}
+	return PostgresConfig{
+		Host:     os.Getenv("PSQL_HOST"),
+		Port:     os.Getenv("PSQL_PORT"),
+		User:     os.Getenv("PSQL_USER"),
+		Password: os.Getenv("PSQL_PASSWORD"),
+		Database: os.Getenv("PSQL_DATABASE"),
+		SSLMode:  os.Getenv("PSQL_SSL_MODE"),
+	}, nil
 }
 
 type PostgresConfig struct {
