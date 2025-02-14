@@ -16,6 +16,7 @@ type Users struct {
 		CurrentUser    Template
 		ForgotPassword Template
 		CheckYourEmail Template
+		ResetPassword  Template
 	}
 	UsersService         *models.UserService
 	SessionService       *models.SessionService
@@ -150,6 +151,58 @@ func (u Users) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Email = r.FormValue("email")
 	u.Templates.ForgotPassword.Execute(w, r, data)
+}
+
+func (u Users) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Token string
+	}
+	data.Token = r.FormValue("token")
+	u.Templates.ResetPassword.Execute(w, r, data)
+}
+
+func (u Users) ProcessResetPassword(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Token    string
+		Password string
+	}
+	data.Token = r.FormValue("token")
+	data.Password = r.FormValue("password")
+
+	// happy path
+	// verify token with token service
+	// replace password with new password
+	// create a new session for them and sign them in
+	// redirect them to the users/me page
+
+	user, err := u.PasswordResetService.Consume(data.Token)
+	if err != nil {
+		fmt.Println(err)
+		// TODO: Distinguish between types of errors
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+	err = u.UsersService.UpdatedPassword(user.ID, data.Password)
+	if err != nil {
+		if err != nil {
+			fmt.Println(err)
+			// TODO: Distinguish between types of errors
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Sign the user in. At this point the password has already been reset
+	// so if there is a problem signing them in we can simply put them at the sign-in page
+
+	session, err := u.SessionService.Create(user.ID)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+	setCookie(w, CookieSession, session.Token)
+	http.Redirect(w, r, "users/me", http.StatusFound)
 }
 
 func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
