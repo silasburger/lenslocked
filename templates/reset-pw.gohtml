@@ -4,7 +4,7 @@
     <h1 class="pt-4 pb-8 text-center text-3xl font-bold text-gray-900">
       Reset your password
     </h1>
-    <form action="/signin" method="post">
+    <form action="/reset-pw" method="post">
       <div class="hidden">
         {{ csrfField }}
       </div>
@@ -24,7 +24,7 @@
       </div>
       {{if .Token}}
       <div class="hidden">
-        <input type="hidden" id="token" value="{{.Token}}" />
+        <input type="hidden" id="token" value="{{.Token}}" name="token"/>
       </div>
       {{else}}
       <div class="py-2">
