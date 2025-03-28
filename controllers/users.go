@@ -17,6 +17,8 @@ type Users struct {
 		ForgotPassword Template
 		CheckYourEmail Template
 		ResetPassword  Template
+		SendSignin     Template
+		EditEmail      Template
 	}
 	UsersService         *models.UserService
 	SessionService       *models.SessionService
@@ -49,16 +51,18 @@ func (u Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
+	u.signInUser(w, r, user)
+}
 
+func (u Users) signInUser(w http.ResponseWriter, r *http.Request, user *models.User) {
 	session, err := u.SessionService.Create(user.ID)
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
-
 	setCookie(w, CookieSession, session.Token)
-	http.Redirect(w, r, "/users/me", http.StatusFound)
+	http.Redirect(w, r, "users/me", http.StatusFound)
 }
 
 func (u Users) Create(w http.ResponseWriter, r *http.Request) {
@@ -84,9 +88,6 @@ func (u Users) Create(w http.ResponseWriter, r *http.Request) {
 
 func (u Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
 	user := context.User(r.Context())
-
-	fmt.Println(user)
-
 	u.Templates.CurrentUser.Execute(w, r, user)
 }
 
@@ -153,6 +154,56 @@ func (u Users) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	u.Templates.ForgotPassword.Execute(w, r, data)
 }
 
+func (u Users) SendSignin(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Email string
+	}
+	data.Email = r.FormValue("email")
+	u.Templates.SendSignin.Execute(w, r, data)
+}
+
+func (u Users) ProcessSendSignin(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Email string
+	}
+	data.Email = r.FormValue("email")
+	pwReset, err := u.PasswordResetService.Create(data.Email)
+	if err != nil {
+		// TODO: Handle other cases in the future. For instance,
+		// if a user doesn't exist with the email address.
+		fmt.Println(err)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+	vals := url.Values{
+		"token": {pwReset.Token},
+	}
+	resetURL := "localhost:3000/email-signin?" + vals.Encode()
+
+	err = u.EmailService.SendSignin(data.Email, resetURL)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+	u.Templates.CheckYourEmail.Execute(w, r, data)
+}
+
+func (u Users) ProcessEmailSignin(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Token string
+	}
+	data.Token = r.FormValue("token")
+	user, err := u.PasswordResetService.Consume(data.Token)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	u.signInUser(w, r, user)
+}
+
 func (u Users) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Token string
@@ -169,7 +220,6 @@ func (u Users) ProcessResetPassword(w http.ResponseWriter, r *http.Request) {
 	data.Token = r.FormValue("token")
 	data.Password = r.FormValue("password")
 
-	// happy path
 	// verify token with token service
 	// replace password with new password
 	// create a new session for them and sign them in
@@ -181,7 +231,7 @@ func (u Users) ProcessResetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
-	err = u.UsersService.UpdatedPassword(user.ID, data.Password)
+	err = u.UsersService.UpdatePassword(user.ID, data.Password)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -190,15 +240,7 @@ func (u Users) ProcessResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Sign the user in. At this point the password has already been reset
 	// so if there is a problem signing them in we can simply put them at the sign-in page
-
-	session, err := u.SessionService.Create(user.ID)
-	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
-		return
-	}
-	setCookie(w, CookieSession, session.Token)
-	http.Redirect(w, r, "users/me", http.StatusFound)
+	u.signInUser(w, r, user)
 }
 
 func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
@@ -226,4 +268,26 @@ func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u.Templates.CheckYourEmail.Execute(w, r, data)
+}
+
+func (u Users) EditEmail(w http.ResponseWriter, r *http.Request) {
+	user := context.User(r.Context())
+	u.Templates.EditEmail.Execute(w, r, user)
+}
+
+func (u Users) ProcessEditEmail(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Email string
+	}
+	user := context.User(r.Context())
+	data.Email = r.FormValue("email")
+
+	err := u.UsersService.UpdateEmail(user.ID, data.Email)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/users/me", http.StatusFound)
 }

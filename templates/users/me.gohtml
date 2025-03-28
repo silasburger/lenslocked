@@ -1,13 +1,15 @@
 {{define "page"}}
-<h1>{{.Email}}</h1>
+<h1>
+  {{.Email}}
+</h1>
 <h2>
-    {{.ID}}
+  {{.ID}}
 </h2>
 
 <form action="/signout" method="POST" class="pr-4">
-    <div class="hidden">
-      {{ csrfField }}
-    </div>
-    <button type="submit">Sign out</button>
-  </form>
-{{end}}
+  <div class="hidden">
+    {{ csrfField }}
+  </div>
+  <button type="submit">Sign out</button>
+</form>
+{{ end }}

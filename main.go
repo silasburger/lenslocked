@@ -116,6 +116,8 @@ func main() {
 	usersC.Templates.ForgotPassword = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "forgot-pw.gohtml"))
 	usersC.Templates.CheckYourEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "check-your-email.gohtml"))
 	usersC.Templates.ResetPassword = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "reset-pw.gohtml"))
+	usersC.Templates.SendSignin = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "send-signin.gohtml"))
+	usersC.Templates.EditEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "edit-email.gohtml"))
 
 	// Ser up router and routes
 
@@ -149,12 +151,23 @@ func main() {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 
+	r.Get("/send-signin", usersC.SendSignin)
+	r.Post("/send-signin", usersC.ProcessSendSignin)
+
+	r.Get("/email-signin", usersC.ProcessEmailSignin)
+
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
 	r.Get("/greeting", controllers.StaticHandler(tpl))
 
 	r.Route("/users/me", func(r chi.Router) {
 		r.Use(umw.RequireUser)
 		r.Get("/", usersC.CurrentUser)
+	})
+
+	r.Route("/users/edit-email", func(r chi.Router) {
+		r.Use(umw.RequireUser)
+		r.Get("/", usersC.EditEmail)
+		r.Post("/", usersC.ProcessEditEmail)
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

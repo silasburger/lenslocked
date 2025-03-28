@@ -56,7 +56,7 @@ func (us *UserService) Authenticate(email, password string) (*User, error) {
 	return &user, nil
 }
 
-func (us *UserService) UpdatedPassword(userID int, password string) error {
+func (us *UserService) UpdatePassword(userID int, password string) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("update password: %w", err)
@@ -68,6 +68,17 @@ func (us *UserService) UpdatedPassword(userID int, password string) error {
 		WHERE users.id = $1`, userID, string(passwordHash))
 	if err != nil {
 		return fmt.Errorf("update password: %w", err)
+	}
+	return nil
+}
+
+func (us *UserService) UpdateEmail(userID int, email string) error {
+	_, err := us.DB.Exec(`
+	UPDATE users 
+	SET email = $2 
+	WHERE users.id = $1`, userID, email)
+	if err != nil {
+		return fmt.Errorf("update email: %w", err)
 	}
 	return nil
 }
