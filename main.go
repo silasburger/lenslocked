@@ -151,9 +151,11 @@ func main() {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 
+	// TODO: change name to passwordless-signin
 	r.Get("/send-signin", usersC.SendSignin)
 	r.Post("/send-signin", usersC.ProcessSendSignin)
 
+	// TODO: change name to passwordless-signin-link
 	r.Get("/email-signin", usersC.ProcessEmailSignin)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))

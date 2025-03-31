@@ -52,7 +52,7 @@ func (u Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 	data.Password = r.FormValue("password")
 	user, err := u.UsersService.Authenticate(data.Email, data.Password)
 	if err != nil {
-		if errors.Is(err, models.ErrEmailNonexistent) || errors.Is(err, models.ErrPasswordIncorrect) {
+		if errors.Is(err, models.ErrEmailNotFound) || errors.Is(err, models.ErrPasswordMismatch) {
 			err = errors.Public(err, "Incorrect email or password.")
 		}
 		u.Templates.SignIn.Execute(w, r, data, err)
@@ -69,8 +69,8 @@ func (u Users) signInUser(w http.ResponseWriter, r *http.Request, user *models.U
 	data.Email = user.Email
 	session, err := u.SessionService.Create(user.ID)
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		err = errors.Public(err, "Something went wrong.")
+		u.Templates.SignIn.Execute(w, r, data, err)
 		return
 	}
 	setCookie(w, CookieSession, session.Token)
@@ -187,10 +187,10 @@ func (u Users) ProcessSendSignin(w http.ResponseWriter, r *http.Request) {
 	data.Email = r.FormValue("email")
 	pwReset, err := u.PasswordResetService.Create(data.Email)
 	if err != nil {
-		// TODO: Handle other cases in the future. For instance,
-		// if a user doesn't exist with the email address.
-		fmt.Println(err)
-		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		if errors.Is(err, models.ErrEmailNotFound) {
+			err = errors.Public(models.ErrEmailNotFound, "There is no account with that email address.")
+		}
+		u.Templates.SendSignin.Execute(w, r, data, err)
 		return
 	}
 	vals := url.Values{
@@ -244,9 +244,14 @@ func (u Users) ProcessResetPassword(w http.ResponseWriter, r *http.Request) {
 	// redirect them to the users/me page
 	user, err := u.PasswordResetService.Consume(data.Token)
 	if err != nil {
-		fmt.Println(err)
 		// TODO: Distinguish between types of errors
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		if errors.Is(err, models.ErrPasswordResetTokenInvalid) {
+			http.Error(w, "Token invalid.", http.StatusBadRequest)
+		}
+		if errors.Is(err, models.ErrPasswordResetTokenExpired) {
+			http.Error(w, "Token expired.", http.StatusBadRequest)
+		}
+		fmt.Println(err)
 		return
 	}
 	err = u.UsersService.UpdatePassword(user.ID, data.Password)
@@ -268,10 +273,10 @@ func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 	data.Email = r.FormValue("email")
 	pwReset, err := u.PasswordResetService.Create(data.Email)
 	if err != nil {
-		// TODO: Handle other cases in the future. For instance,
-		// if a user doesn't exist with the email address.
-		fmt.Println(err)
-		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		if errors.Is(err, models.ErrEmailNotFound) {
+			err = errors.Public(models.ErrEmailNotFound, "There is no account with that email address.")
+		}
+		u.Templates.ForgotPassword.Execute(w, r, data, err)
 		return
 	}
 	vals := url.Values{
@@ -302,8 +307,8 @@ func (u Users) ProcessEditEmail(w http.ResponseWriter, r *http.Request) {
 
 	err := u.UsersService.UpdateEmail(user.ID, data.Email)
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		err = errors.Public(err, "Something went wrong.")
+		u.Templates.EditEmail.Execute(w, r, data, err)
 		return
 	}
 

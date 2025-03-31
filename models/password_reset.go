@@ -2,8 +2,14 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
+)
+
+var (
+	ErrPasswordResetTokenExpired = errors.New("models: password reset token has expired")
+	ErrPasswordResetTokenInvalid = errors.New("models: invalid token")
 )
 
 type PasswordReset struct {
@@ -40,6 +46,9 @@ func (service *PasswordResetService) Create(email string) (*PasswordReset, error
 	row := service.DB.QueryRow(`SELECT id FROM users WHERE email = $1`, email)
 	err := row.Scan(&userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrEmailNotFound
+		}
 		return nil, fmt.Errorf("create: %w", err)
 	}
 
@@ -102,10 +111,13 @@ func (service *PasswordResetService) Consume(token string) (*User, error) {
 		&pwReset.ID, &pwReset.ExpiresAt,
 		&user.ID, &user.Email, &user.PasswordHash)
 	if err != nil {
-		return nil, fmt.Errorf("consume: %w, %v", err, tokenHash)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrPasswordResetTokenInvalid
+		}
+		return nil, fmt.Errorf("consume: %w", err)
 	}
 	if time.Now().After(pwReset.ExpiresAt) {
-		return nil, fmt.Errorf("token expired: %v", token)
+		return nil, ErrPasswordResetTokenExpired
 	}
 	err = service.delete(pwReset.ID)
 	if err != nil {
