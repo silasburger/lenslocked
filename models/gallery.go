@@ -7,7 +7,7 @@ import (
 )
 
 type Gallery struct {
-	ID     string
+	ID     int
 	UserID int
 	Title  string
 }
@@ -31,7 +31,7 @@ func (gs *GalleryService) Create(title string, userID int) (*Gallery, error) {
 	return &gallery, nil
 }
 
-func (gs *GalleryService) ByID(id string) (*Gallery, error) {
+func (gs *GalleryService) ByID(id int) (*Gallery, error) {
 	gallery := Gallery{
 		ID: id,
 	}
