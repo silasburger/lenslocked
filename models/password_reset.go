@@ -47,7 +47,7 @@ func (service *PasswordResetService) Create(email string) (*PasswordReset, error
 	err := row.Scan(&userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrEmailNotFound
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("create: %w", err)
 	}

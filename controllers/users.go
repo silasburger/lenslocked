@@ -52,7 +52,7 @@ func (u Users) ProcessSignIn(w http.ResponseWriter, r *http.Request) {
 	data.Password = r.FormValue("password")
 	user, err := u.UsersService.Authenticate(data.Email, data.Password)
 	if err != nil {
-		if errors.Is(err, models.ErrEmailNotFound) || errors.Is(err, models.ErrPasswordMismatch) {
+		if errors.Is(err, models.ErrNotFound) || errors.Is(err, models.ErrPasswordMismatch) {
 			err = errors.Public(err, "Incorrect email or password.")
 		}
 		u.Templates.SignIn.Execute(w, r, data, err)
@@ -187,8 +187,8 @@ func (u Users) ProcessSendSignin(w http.ResponseWriter, r *http.Request) {
 	data.Email = r.FormValue("email")
 	pwReset, err := u.PasswordResetService.Create(data.Email)
 	if err != nil {
-		if errors.Is(err, models.ErrEmailNotFound) {
-			err = errors.Public(models.ErrEmailNotFound, "There is no account with that email address.")
+		if errors.Is(err, models.ErrNotFound) {
+			err = errors.Public(models.ErrNotFound, "There is no account with that email address.")
 		}
 		u.Templates.SendSignin.Execute(w, r, data, err)
 		return
@@ -273,8 +273,8 @@ func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 	data.Email = r.FormValue("email")
 	pwReset, err := u.PasswordResetService.Create(data.Email)
 	if err != nil {
-		if errors.Is(err, models.ErrEmailNotFound) {
-			err = errors.Public(models.ErrEmailNotFound, "There is no account with that email address.")
+		if errors.Is(err, models.ErrNotFound) {
+			err = errors.Public(models.ErrNotFound, "There is no account with that email address.")
 		}
 		u.Templates.ForgotPassword.Execute(w, r, data, err)
 		return

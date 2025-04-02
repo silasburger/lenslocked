@@ -68,8 +68,6 @@ func main() {
 		panic(err)
 	}
 	// Set up database connection
-	// cfg := models.DefaultPostgresConfig()
-	// fmt.Println(cfg)
 	db, err := models.Open(cfg.PSQL)
 	if err != nil {
 		panic(err)
@@ -93,6 +91,9 @@ func main() {
 		DB: db,
 	}
 	emailService := models.NewEmailService(cfg.SMTP)
+	galleriesService := &models.GalleryService{
+		DB: db,
+	}
 
 	// Set up middleware
 	csrfMw := csrf.Protect([]byte(cfg.CSRF.Key))
@@ -119,6 +120,10 @@ func main() {
 	usersC.Templates.SendSignin = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "send-signin.gohtml"))
 	usersC.Templates.EditEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "edit-email.gohtml"))
 
+	galleriesC := controllers.Galleries{
+		GalleryService: galleriesService,
+	}
+	galleriesC.Templates.New = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "galleries/new.gohtml"))
 	// Ser up router and routes
 
 	r := chi.NewRouter()
@@ -171,6 +176,8 @@ func main() {
 		r.Get("/", usersC.EditEmail)
 		r.Post("/", usersC.ProcessEditEmail)
 	})
+
+	r.Get("/galleries/new", galleriesC.New)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Page not found", http.StatusNotFound)
