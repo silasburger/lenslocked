@@ -32,13 +32,15 @@ func (g Galleries) New(w http.ResponseWriter, r *http.Request) {
 
 func (g Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		UserID int
-		Title  string
+		UserID    int
+		Title     string
+		Published bool
 	}
 	user := context.User(r.Context())
 	data.UserID = user.ID
 	data.Title = r.FormValue("title")
-	gallery, err := g.GalleryService.Create(data.Title, data.UserID)
+	data.Published = false
+	gallery, err := g.GalleryService.Create(data.Title, data.UserID, data.Published)
 	if err != nil {
 		g.Templates.New.Execute(w, r, data, err)
 		return
@@ -48,16 +50,18 @@ func (g Galleries) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g Galleries) Edit(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		ID        int
+		Title     string
+		Published bool
+	}
 	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
 	if err != nil {
 		return
 	}
-	var data struct {
-		ID    int
-		Title string
-	}
 	data.ID = gallery.ID
 	data.Title = gallery.Title
+	data.Published = gallery.Published
 	g.Templates.Edit.Execute(w, r, data)
 }
 
@@ -67,6 +71,11 @@ func (g Galleries) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	gallery.Title = r.FormValue("title")
+	if r.FormValue("published") == "" {
+		gallery.Published = false
+	} else if r.FormValue("published") == "true" {
+		gallery.Published = true
+	}
 	err = g.GalleryService.Update(gallery)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -78,8 +87,9 @@ func (g Galleries) Update(w http.ResponseWriter, r *http.Request) {
 
 func (g Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	type Gallery struct {
-		ID    int
-		Title string
+		ID        int
+		Title     string
+		Published bool
 	}
 	var data struct {
 		Galleries []Gallery
@@ -87,19 +97,18 @@ func (g Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	user := context.User(r.Context())
 	galleries, err := g.GalleryService.ByUserID(user.ID)
 	if err != nil {
-		fmt.Println(err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
 	for _, gallery := range galleries {
-		data.Galleries = append(data.Galleries, Gallery{ID: gallery.ID, Title: gallery.Title})
+		data.Galleries = append(data.Galleries, Gallery{ID: gallery.ID, Title: gallery.Title, Published: gallery.Published})
 	}
 	g.Templates.Index.Execute(w, r, data)
 }
 
 func (g Galleries) Show(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r)
+	gallery, err := g.galleryByID(w, r, mustOwnUnpublishedGallery)
 	if err != nil {
 		return
 	}
@@ -112,7 +121,7 @@ func (g Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	data.Title = gallery.Title
 	for i := 0; i < 20; i++ {
 		w, h := rand.Intn(500)+200, rand.Intn(500)+200
-		catImageURL := fmt.Sprintf("https://placecats.com/%d/%d", w, h)
+		catImageURL := fmt.Sprintf("https://placedog.net/%d/%d", w, h)
 		data.Images = append(data.Images, catImageURL)
 	}
 	g.Templates.Show.Execute(w, r, data)
@@ -144,7 +153,6 @@ func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request, opts ...g
 			http.Error(w, "Gallery not found", http.StatusInternalServerError)
 			return nil, err
 		}
-		fmt.Println(err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return nil, err
 	}
@@ -158,10 +166,23 @@ func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request, opts ...g
 }
 
 func userMustOwnGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
+	fmt.Println(r.Context())
 	user := context.User(r.Context())
 	if user.ID != gallery.UserID {
-		http.Error(w, "You are not authorized to edit this gallery", http.StatusForbidden)
+		http.Error(w, "You are not authorized to access this gallery", http.StatusForbidden)
 		return fmt.Errorf("user does not have access to this gallery")
+	}
+	return nil
+}
+
+func mustOwnUnpublishedGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
+	if !gallery.Published {
+		user := context.User(r.Context())
+		if user == nil {
+			http.Error(w, "You are not authorized to access this gallery", http.StatusForbidden)
+			return fmt.Errorf("unauthorized to access unpublished gallery")
+		}
+		return userMustOwnGallery(w, r, gallery)
 	}
 	return nil
 }

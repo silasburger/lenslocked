@@ -3,7 +3,8 @@
 CREATE TABLE galleries (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users (id),
-  title TEXT
+  title TEXT,
+  published BOOLEAN DEFAULT FALSE
 );
 -- +goose StatementEnd
 
