@@ -27,3 +27,6 @@ go.work.sum
 
 # my project binary
 lenslocked
+
+# images directory during development
+images/
