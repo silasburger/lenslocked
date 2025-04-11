@@ -55,10 +55,11 @@ func (g Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 		Title     string
 		Published bool
 	}
-	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
-	if err != nil {
-		return
-	}
+	gallery := context.Gallery(r.Context())
+	// gallery, err := g.galleryByID(w, r, userMustOwnGallery)
+	// if err != nil {
+	// 	return
+	// }
 	data.ID = gallery.ID
 	data.Title = gallery.Title
 	data.Published = gallery.Published
@@ -66,17 +67,18 @@ func (g Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g Galleries) Update(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
-	if err != nil {
-		return
-	}
+	gallery := context.Gallery(r.Context())
+	// gallery, err := g.galleryByID(w, r, userMustOwnGallery)
+	// if err != nil {
+	// 	return
+	// }
 	gallery.Title = r.FormValue("title")
 	if r.FormValue("published") == "" {
 		gallery.Published = false
 	} else if r.FormValue("published") == "true" {
 		gallery.Published = true
 	}
-	err = g.GalleryService.Update(gallery)
+	err := g.GalleryService.Update(gallery)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
@@ -108,10 +110,10 @@ func (g Galleries) Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g Galleries) Show(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r, mustOwnUnpublishedGallery)
-	if err != nil {
-		return
-	}
+	gallery := context.Gallery(r.Context())
+	// if err != nil {
+	// 	return
+	// }
 	var data struct {
 		ID     int
 		Title  string
@@ -119,20 +121,27 @@ func (g Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	}
 	data.ID = gallery.ID
 	data.Title = gallery.Title
-	for i := 0; i < 20; i++ {
-		w, h := rand.Intn(500)+200, rand.Intn(500)+200
-		catImageURL := fmt.Sprintf("https://placedog.net/%d/%d", w, h)
-		data.Images = append(data.Images, catImageURL)
-	}
+	data.Images = createImages()
 	g.Templates.Show.Execute(w, r, data)
 }
 
-func (g Galleries) Delete(w http.ResponseWriter, r *http.Request) {
-	gallery, err := g.galleryByID(w, r, userMustOwnGallery)
-	if err != nil {
-		return
+func createImages() []string {
+	var images []string
+	for i := 0; i < 20; i++ {
+		w, h := rand.Intn(500)+200, rand.Intn(500)+200
+		catImageURL := fmt.Sprintf("https://placedog.net/%d/%d", w, h)
+		images = append(images, catImageURL)
 	}
-	err = g.GalleryService.Delete(gallery.ID)
+	return images
+}
+
+func (g Galleries) Delete(w http.ResponseWriter, r *http.Request) {
+	gallery := context.Gallery(r.Context())
+	// gallery, err := g.galleryByID(w, r, userMustOwnGallery)
+	// if err != nil {
+	// 	return
+	// }
+	err := g.GalleryService.Delete(gallery.ID)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
@@ -140,49 +149,100 @@ func (g Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/galleries", http.StatusFound)
 }
 
-type galleryOpt func(http.ResponseWriter, *http.Request, *models.Gallery) error
+// type galleryOpt func(http.ResponseWriter, *http.Request, *models.Gallery) error
 
-func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request, opts ...galleryOpt) (*models.Gallery, error) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusNotFound)
-	}
-	gallery, err := g.GalleryService.ByID(id)
-	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			http.Error(w, "Gallery not found", http.StatusInternalServerError)
-			return nil, err
-		}
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
-		return nil, err
-	}
-	for _, opt := range opts {
-		err := opt(w, r, gallery)
+// func (g Galleries) galleryByID(w http.ResponseWriter, r *http.Request, opts ...galleryOpt) (*models.Gallery, error) {
+// 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+// 	if err != nil {
+// 		http.Error(w, "Invalid ID", http.StatusNotFound)
+// 	}
+// 	gallery, err := g.GalleryService.ByID(id)
+// 	if err != nil {
+// 		if errors.Is(err, models.ErrNotFound) {
+// 			http.Error(w, "Gallery not found", http.StatusInternalServerError)
+// 			return nil, err
+// 		}
+// 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+// 		return nil, err
+// 	}
+// 	for _, opt := range opts {
+// 		err := opt(w, r, gallery)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	return gallery, err
+// }
+
+// func userMustOwnGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
+// 	user := context.User(r.Context())
+// 	if user.ID != gallery.UserID {
+// 		http.Error(w, "You are not authorized to access this gallery", http.StatusForbidden)
+// 		return fmt.Errorf("user does not have access to this gallery")
+// 	}
+// 	return nil
+// }
+
+// func mustOwnUnpublishedGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
+// 	if !gallery.Published {
+// 		user := context.User(r.Context())
+// 		if user == nil {
+// 			http.Redirect(w, r, "/signin", http.StatusFound)
+// 			return fmt.Errorf("unauthorized to access unpublished gallery")
+// 		}
+// 		return userMustOwnGallery(w, r, gallery)
+// 	}
+// 	return nil
+// }
+
+type GalleryMiddleware struct {
+	GalleryService *models.GalleryService
+}
+
+func (gmw GalleryMiddleware) GetGallery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		galleryID := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(galleryID)
 		if err != nil {
-			return nil, err
+			next.ServeHTTP(w, r)
+			return
 		}
-	}
-	return gallery, err
+		gallery, err := gmw.GalleryService.ByID(id)
+		if err != nil {
+			fmt.Println(err)
+			if errors.Is(err, models.ErrNotFound) {
+				http.Error(w, "Gallery not found", http.StatusInternalServerError)
+				return
+			}
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+		ctx := r.Context()
+		ctx = context.WithGallery(ctx, gallery)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
 }
 
-func userMustOwnGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
-	fmt.Println(r.Context())
-	user := context.User(r.Context())
-	if user.ID != gallery.UserID {
-		http.Error(w, "You are not authorized to access this gallery", http.StatusForbidden)
-		return fmt.Errorf("user does not have access to this gallery")
-	}
-	return nil
-}
-
-func mustOwnUnpublishedGallery(w http.ResponseWriter, r *http.Request, gallery *models.Gallery) error {
-	if !gallery.Published {
+func (gmw GalleryMiddleware) RequireUserOwnGallery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gallery := context.Gallery(r.Context())
 		user := context.User(r.Context())
-		if user == nil {
+		if gallery.UserID != user.ID {
 			http.Error(w, "You are not authorized to access this gallery", http.StatusForbidden)
-			return fmt.Errorf("unauthorized to access unpublished gallery")
+			return
 		}
-		return userMustOwnGallery(w, r, gallery)
-	}
-	return nil
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (gmw GalleryMiddleware) RequireGalleryPublished(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gallery := context.Gallery(r.Context())
+		if !gallery.Published {
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

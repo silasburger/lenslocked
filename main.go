@@ -123,6 +123,10 @@ func main() {
 	usersC.Templates.SendSignin = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "send-signin.gohtml"))
 	usersC.Templates.EditEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "edit-email.gohtml"))
 
+	gmw := controllers.GalleryMiddleware{
+		GalleryService: galleriesService,
+	}
+
 	galleriesC := controllers.Galleries{
 		GalleryService: galleriesService,
 	}
@@ -130,6 +134,10 @@ func main() {
 	galleriesC.Templates.Edit = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "galleries/edit.gohtml"))
 	galleriesC.Templates.Index = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "galleries/index.gohtml"))
 	galleriesC.Templates.Show = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "galleries/show.gohtml"))
+	// galleriesC.Templates.ShowPublished = views.Must(views.ParseFS(templates.FS, "galleries/frame.gohtml", "galleries/show.gohtml"))
+
+	publicGalleriesC := controllers.Galleries{}
+	publicGalleriesC.Templates.Show = views.Must(views.ParseFS(templates.FS, "galleries/frame.gohtml", "galleries/show.gohtml"))
 
 	// Set up router and routes
 	r := chi.NewRouter()
@@ -184,16 +192,26 @@ func main() {
 	})
 
 	r.Route("/galleries", func(r chi.Router) {
-		r.Get("/{id}", galleriesC.Show)
+		r.Use(umw.RequireUser)
 		r.Group(func(r chi.Router) {
-			r.Use(umw.RequireUser)
 			r.Get("/", galleriesC.Index)
 			r.Get("/new", galleriesC.New)
 			r.Post("/", galleriesC.Create)
-			r.Get("/{id}/edit", galleriesC.Edit)
-			r.Post("/{id}", galleriesC.Update)
-			r.Post("/{id}/delete", galleriesC.Delete)
 		})
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(gmw.GetGallery)
+			r.Use(gmw.RequireUserOwnGallery)
+			r.Get("/", galleriesC.Show)
+			r.Get("/edit", galleriesC.Edit)
+			r.Post("/", galleriesC.Update)
+			r.Post("/delete", galleriesC.Delete)
+		})
+	})
+
+	r.Route("/g/{id}", func(r chi.Router) {
+		r.Use(gmw.GetGallery)
+		r.Use(gmw.RequireGalleryPublished)
+		r.Get("/", publicGalleriesC.Show)
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
