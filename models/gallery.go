@@ -116,15 +116,13 @@ func (service GalleryService) Images(galleryID int) ([]Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("receiving gallery images: %w", err)
 	}
-
 	var images []Image
-
 	for _, file := range allFiles {
 		if hasExtension(file, service.extensions()) {
 			images = append(images, Image{
+				GalleryID: galleryID,
 				Path:      file,
 				Filename:  filepath.Base(file),
-				GalleryID: galleryID,
 			})
 		}
 	}
