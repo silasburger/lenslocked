@@ -162,7 +162,7 @@ func main() {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 
-	// TODO: change name to passwordless-signin
+	// TODO: change name to passwordless-signin 
 	r.Get("/send-signin", usersC.SendSignin)
 	r.Post("/send-signin", usersC.ProcessSendSignin)
 
@@ -195,6 +195,7 @@ func main() {
 			r.Post("/{id}", galleriesC.Update)
 			r.Post("/{id}/delete", galleriesC.Delete)
 			r.Post("/{id}/images/{filename}/delete", galleriesC.DeleteImage)
+			r.Post("/{id}/images", galleriesC.UploadImage)
 		})
 	})
 
