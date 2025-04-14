@@ -29,7 +29,8 @@
         id="published"
         name="published"
         value="true"
-        {{ if.Published}}checked{{end}}
+        {{
+        if.Published}}checked{{end}}
       />
     </div>
     <div class="py-4">
@@ -41,6 +42,23 @@
       </button>
     </div>
   </form>
+
+  <div class="py-4">
+    <h2 class="pb-4 text-sm font-semibold text-gray-800"></h2>
+    <div class="py-2 grid grid-cols-8 gap-2">
+      {{ range.Images }}
+      <div class="h-min w-full relative">
+        <div class="absolute top-2 right-2">
+					{{template "delete_image_form" .}}
+				</div>
+        <img
+          class="w-full"
+          src="/galleries/{{.GalleryID}}/images/{{.FilenameEscaped}}"
+        />
+      </div>
+      {{ end }}
+    </div>
+  </div>
 
   <!-- Dangerous Actions -->
   <div class="py-4">
@@ -66,3 +84,23 @@
 </div>
 
 {{ end }}
+
+{{define "delete_image_form"}}
+<form action="/galleries/{{.GalleryID}}/images/{{.FilenameEscaped}}/delete"
+  method="post"
+  onsubmit="return confirm('Do you really want to delete this image?');">
+  {{csrfField}}
+  <button
+    type="submit"
+    class="
+      p-1
+      text-xs text-red-800
+      bg-red-100
+      border border-red-400
+      rounded
+    "
+  >
+    Delete
+  </button>
+</form>
+{{end}}
