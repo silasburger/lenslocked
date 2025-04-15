@@ -6,8 +6,19 @@ services:
     restart: always
     volumes: 
       - ./images:/app/images
-    # TODO: Ports for testing purposes, remove before deploying
-    ports:
-      - 3000:3000
+    # Ports for testing purposes, remove before deploying bc we are using caddy to expose ports
+    # ports:
+    #   - 3000:3000
     depends_on:
       - db
+
+
+  caddy:
+    image: caddy
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+      # - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
