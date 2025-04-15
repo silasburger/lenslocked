@@ -30,3 +30,5 @@ lenslocked
 
 # images directory during development
 images/
+
+node_modules/
