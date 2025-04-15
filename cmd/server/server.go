@@ -71,16 +71,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = run(cfg)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func run(cfg config) error {
+	cfg, err := loadEnvConfig()
+	if err != nil {
+		return err
+	}
 	// Set up database connection
 	db, err := models.Open(cfg.PSQL)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer db.Close()
 
 	err = models.MigrateFS(db, migrations.FS, ".")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Set up service
@@ -210,6 +221,6 @@ func main() {
 		http.Error(w, "Page not found", http.StatusNotFound)
 	})
 
-	fmt.Println("Starting server on 3000...")
-	http.ListenAndServe(cfg.Server.Address, r)
+	fmt.Printf("Starting the server on %s...\n", cfg.Server.Address)
+	return http.ListenAndServe(cfg.Server.Address, r)
 }

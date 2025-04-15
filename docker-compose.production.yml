@@ -1,0 +1,13 @@
+services:
+  server:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    restart: always
+    volumes: 
+      - ./images:/app/images
+    # TODO: Ports for testing purposes, remove before deploying
+    ports:
+      - 3000:3000
+    depends_on:
+      - db
