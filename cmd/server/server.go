@@ -36,9 +36,13 @@ func loadEnvConfig() (config, error) {
 		return cfg, err
 	}
 
-	cfg.PSQL, err = models.DefaultPostgresConfig()
-	if err != nil {
-		return cfg, err
+	cfg.PSQL = models.PostgresConfig{
+		Host:     os.Getenv("PSQL_HOST"),
+		Port:     os.Getenv("PSQL_PORT"),
+		User:     os.Getenv("PSQL_USER"),
+		Password: os.Getenv("PSQL_PASSWORD"),
+		Database: os.Getenv("PSQL_DATABASE"),
+		SSLMode:  os.Getenv("PSQL_SSL_MODE"),
 	}
 
 	cfg.SMTP.Host = os.Getenv("SMTP_HOST")
@@ -162,7 +166,7 @@ func main() {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 
-	// TODO: change name to passwordless-signin 
+	// TODO: change name to passwordless-signin
 	r.Get("/send-signin", usersC.SendSignin)
 	r.Post("/send-signin", usersC.ProcessSendSignin)
 
