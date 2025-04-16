@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     volumes: 
-      - ./images:/app/images
+      - ~/data/lenslocked.com/images:/app/images
     # Ports for testing purposes, remove before deploying bc we are using caddy to expose ports
     # ports:
     #   - 3000:3000
@@ -22,3 +22,13 @@ services:
       # - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ~/data/lenslocked.com/caddy:/data
+
+  db:
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: ${PSQL_USER}
+      POSTGRES_PASSWORD: ${PSQL_PASSWORD}
+      POSTGRES_DB: ${PSQL_DATABASE}
+    volumes:
+      - ~/data/lenslocked.com/psql:/var/lib/postgresql/data/pgdata
