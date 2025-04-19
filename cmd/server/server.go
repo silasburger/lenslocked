@@ -26,6 +26,7 @@ type config struct {
 	}
 	Server struct {
 		Address string
+		URL     string
 	}
 }
 
@@ -55,7 +56,6 @@ func loadEnvConfig() (config, error) {
 	cfg.SMTP.Password = os.Getenv("SMTP_PASSWORD")
 
 	cfg.CSRF.Key = os.Getenv("CSRF_KEY")
-	// TODO: set to true before deployment
 	secureStr := os.Getenv("CSRF_SECURE")
 	secure, err := strconv.ParseBool(secureStr)
 	if err != nil {
@@ -64,6 +64,7 @@ func loadEnvConfig() (config, error) {
 	cfg.CSRF.Secure = secure
 
 	cfg.Server.Address = os.Getenv("SERVER_ADDRESS")
+	cfg.Server.URL = os.Getenv("SERVER_URL")
 	return cfg, nil
 }
 
@@ -106,7 +107,7 @@ func run(cfg config) error {
 	pwResetService := &models.PasswordResetService{
 		DB: db,
 	}
-	emailService := models.NewEmailService(cfg.SMTP)
+	emailService := models.NewEmailService(cfg.SMTP, cfg.Server.URL)
 	galleriesService := &models.GalleryService{
 		DB: db,
 	}

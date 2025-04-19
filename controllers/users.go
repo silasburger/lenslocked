@@ -196,14 +196,7 @@ func (u Users) ProcessPasswordlessSignin(w http.ResponseWriter, r *http.Request)
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
-
-	fmt.Println("📙 📙 📙 📙 📙 📙 📙 📙 ", pwReset.Token, "reset token", "📙📙 📙 📙 📙 📙 📙 📙 📙 📙 📙 📙 ")
-
-	//TODO: Make URL here configurable
-	resetURL := "localhost:3000/email-signin?" + vals.Encode()
-
-	fmt.Println("✨✨✨✨✨", resetURL, "✨✨✨✨✨✨✨✨✨✨✨")
-
+	resetURL := u.EmailService.ServerURL + "/reset-pw?" + vals.Encode()
 	err = u.EmailService.PasswordlessSignin(data.Email, resetURL)
 	if err != nil {
 		fmt.Println(err)
@@ -289,10 +282,7 @@ func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
-
-	//TODO: make URL configurable
-	resetURL := "localhost:3000/reset-pw?" + vals.Encode()
-
+	resetURL := u.EmailService.ServerURL + "/reset-pw?" + vals.Encode()
 	err = u.EmailService.ForgotPassword(data.Email, resetURL)
 	if err != nil {
 		fmt.Println(err)

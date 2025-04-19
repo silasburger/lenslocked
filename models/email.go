@@ -28,11 +28,13 @@ type Email struct {
 type EmailService struct {
 	DefaultSender string
 	Dialer        *mail.Dialer
+	ServerURL     string
 }
 
-func NewEmailService(config SMTPConfig) *EmailService {
+func NewEmailService(config SMTPConfig, serverURL string) *EmailService {
 	es := EmailService{
-		Dialer: mail.NewDialer(config.Host, config.Port, config.Username, config.Password),
+		Dialer:    mail.NewDialer(config.Host, config.Port, config.Username, config.Password),
+		ServerURL: serverURL,
 	}
 	return &es
 }
