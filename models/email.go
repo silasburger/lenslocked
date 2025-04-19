@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	DefaultSender = "support@lenslocked.com"
+	DefaultSender = "support@lenslocked.silasburger.com"
 )
 
 type SMTPConfig struct {
@@ -40,15 +40,14 @@ func NewEmailService(config SMTPConfig) *EmailService {
 func (es EmailService) Send(email Email) error {
 	msg := mail.NewMessage()
 	msg.SetHeader("To", email.To)
-	// TODO: Set the from field to a default value if it isn't set by Email
 	msg.SetHeader("Subject", email.Subject)
 	es.setFrom(msg, email)
 	switch {
 	case email.Plaintext != "" && email.HTML != "":
-		msg.SetBody("text/plain", email.Plaintext)
-		msg.AddAlternative("text/html", email.HTML)
+		msg.SetBody("text/html", email.HTML)
+		msg.AddAlternative("text/plain", email.Plaintext, mail.SetPartEncoding(mail.Base64))
 	case email.Plaintext != "":
-		msg.SetBody("text/plain", email.Plaintext)
+		msg.SetBody("text/plain", email.Plaintext, mail.SetPartEncoding(mail.Base64))
 	case email.HTML != "":
 		msg.SetBody("text/html", email.HTML)
 	}
@@ -73,11 +72,20 @@ func (es EmailService) setFrom(msg *mail.Message, email Email) {
 }
 
 func (es EmailService) ForgotPassword(to, resetURL string) error {
+	htmlBody := fmt.Sprintf(`
+	<html>
+	<body>
+		<p>o reset your password please visit the following URL:</p>
+		<a href="http://%s">Reset Password</a>
+	</body>
+	</html>
+	`, resetURL)
+	plaintextBody := fmt.Sprintf("To reset your password please visit the following URL: %s", resetURL)
 	email := Email{
 		To:        to,
 		Subject:   "Reset your password",
-		Plaintext: "To reset your password please visit the following URL: " + resetURL,
-		HTML:      `<p>To reset your password please visit the following URL: <a href="` + resetURL + `"> Reset Password </a></p>`,
+		Plaintext: plaintextBody,
+		HTML:      htmlBody,
 	}
 	err := es.Send(email)
 	if err != nil {
@@ -86,12 +94,21 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 	return nil
 }
 
-func (es EmailService) SendSignin(to, resetURL string) error {
+func (es EmailService) PasswordlessSignin(to, resetURL string) error {
+	htmlBody := fmt.Sprintf(`
+		<html>
+		<body>
+			<p>Click below to sign in to your account:</p>
+			<a href="http://%s">Sign in</a>
+		</body>
+		</html>
+		`, resetURL)
+	plaintextBody := fmt.Sprintf("To sign in to your account visit following URL: %s", resetURL)
 	email := Email{
 		To:        to,
 		Subject:   "Sign in link",
-		Plaintext: "To sign in to your account visit following URL: " + resetURL,
-		HTML:      `<p>To sign in to your account visit following UR: <a href="` + resetURL + `"> Sign In </a></p>`,
+		Plaintext: plaintextBody,
+		HTML:      htmlBody,
 	}
 	err := es.Send(email)
 	if err != nil {

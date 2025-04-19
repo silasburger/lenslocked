@@ -12,14 +12,14 @@ import (
 
 type Users struct {
 	Templates struct {
-		New            Template
-		SignIn         Template
-		CurrentUser    Template
-		ForgotPassword Template
-		CheckYourEmail Template
-		ResetPassword  Template
-		SendSignin     Template
-		EditEmail      Template
+		New                Template
+		SignIn             Template
+		CurrentUser        Template
+		ForgotPassword     Template
+		CheckYourEmail     Template
+		ResetPassword      Template
+		PasswordlessSignin Template
+		EditEmail          Template
 	}
 	UsersService         *models.UserService
 	SessionService       *models.SessionService
@@ -172,15 +172,15 @@ func (u Users) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	u.Templates.ForgotPassword.Execute(w, r, data)
 }
 
-func (u Users) SendSignin(w http.ResponseWriter, r *http.Request) {
+func (u Users) PasswordlessSignin(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Email string
 	}
 	data.Email = r.FormValue("email")
-	u.Templates.SendSignin.Execute(w, r, data)
+	u.Templates.PasswordlessSignin.Execute(w, r, data)
 }
 
-func (u Users) ProcessSendSignin(w http.ResponseWriter, r *http.Request) {
+func (u Users) ProcessPasswordlessSignin(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Email string
 	}
@@ -190,15 +190,21 @@ func (u Users) ProcessSendSignin(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, models.ErrNotFound) {
 			err = errors.Public(models.ErrNotFound, "There is no account with that email address.")
 		}
-		u.Templates.SendSignin.Execute(w, r, data, err)
+		u.Templates.PasswordlessSignin.Execute(w, r, data, err)
 		return
 	}
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
+
+	fmt.Println("📙 📙 📙 📙 📙 📙 📙 📙 ", pwReset.Token, "reset token", "📙📙 📙 📙 📙 📙 📙 📙 📙 📙 📙 📙 ")
+
+	//TODO: Make URL here configurable
 	resetURL := "localhost:3000/email-signin?" + vals.Encode()
 
-	err = u.EmailService.SendSignin(data.Email, resetURL)
+	fmt.Println("✨✨✨✨✨", resetURL, "✨✨✨✨✨✨✨✨✨✨✨")
+
+	err = u.EmailService.PasswordlessSignin(data.Email, resetURL)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
@@ -212,6 +218,7 @@ func (u Users) ProcessEmailSignin(w http.ResponseWriter, r *http.Request) {
 		Token string
 	}
 	data.Token = r.FormValue("token")
+	fmt.Println("😍😍😍😍😍😍😍😍😍😍😍", data.Token, "😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍")
 	user, err := u.PasswordResetService.Consume(data.Token)
 	if err != nil {
 		fmt.Println(err)
@@ -282,6 +289,8 @@ func (u Users) ProcessForgotPassword(w http.ResponseWriter, r *http.Request) {
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
+
+	//TODO: make URL configurable
 	resetURL := "localhost:3000/reset-pw?" + vals.Encode()
 
 	err = u.EmailService.ForgotPassword(data.Email, resetURL)

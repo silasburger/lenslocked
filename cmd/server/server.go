@@ -55,6 +55,7 @@ func loadEnvConfig() (config, error) {
 	cfg.SMTP.Password = os.Getenv("SMTP_PASSWORD")
 
 	cfg.CSRF.Key = os.Getenv("CSRF_KEY")
+	// TODO: set to true before deployment
 	secureStr := os.Getenv("CSRF_SECURE")
 	secure, err := strconv.ParseBool(secureStr)
 	if err != nil {
@@ -111,7 +112,6 @@ func run(cfg config) error {
 	}
 
 	// Set up middleware
-	// TODO: set to true before deployment
 	csrfMw := csrf.Protect(
 		[]byte(cfg.CSRF.Key),
 		csrf.Secure(cfg.CSRF.Secure),
@@ -135,7 +135,7 @@ func run(cfg config) error {
 	usersC.Templates.ForgotPassword = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "forgot-pw.gohtml"))
 	usersC.Templates.CheckYourEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "check-your-email.gohtml"))
 	usersC.Templates.ResetPassword = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "reset-pw.gohtml"))
-	usersC.Templates.SendSignin = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "send-signin.gohtml"))
+	usersC.Templates.PasswordlessSignin = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "passwordless-signin.gohtml"))
 	usersC.Templates.EditEmail = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "edit-email.gohtml"))
 
 	galleriesC := controllers.Galleries{
@@ -177,11 +177,9 @@ func run(cfg config) error {
 	r.Get("/reset-pw", usersC.ResetPassword)
 	r.Post("/reset-pw", usersC.ProcessResetPassword)
 
-	// TODO: change name to passwordless-signin
-	r.Get("/send-signin", usersC.SendSignin)
-	r.Post("/send-signin", usersC.ProcessSendSignin)
+	r.Get("/passwordless-signin", usersC.PasswordlessSignin)
+	r.Post("/passwordless-signin", usersC.ProcessPasswordlessSignin)
 
-	// TODO: change name to passwordless-signin-link
 	r.Get("/email-signin", usersC.ProcessEmailSignin)
 
 	tpl = views.Must(views.ParseFS(templates.FS, "tailwind.gohtml", "greeting.gohtml"))
