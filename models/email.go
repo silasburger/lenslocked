@@ -78,7 +78,7 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 	<html>
 	<body>
 		<p>o reset your password please visit the following URL:</p>
-		<a href="http://%s">Reset Password</a>
+		<a href="https://%s">Reset Password</a>
 	</body>
 	</html>
 	`, resetURL)
@@ -101,7 +101,7 @@ func (es EmailService) PasswordlessSignin(to, resetURL string) error {
 		<html>
 		<body>
 			<p>Click below to sign in to your account:</p>
-			<a href="http://%s">Sign in</a>
+			<a href="https://%s">Sign in</a>
 		</body>
 		</html>
 		`, resetURL)
