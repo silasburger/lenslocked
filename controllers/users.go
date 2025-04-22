@@ -196,8 +196,8 @@ func (u Users) ProcessPasswordlessSignin(w http.ResponseWriter, r *http.Request)
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
-	resetURL := u.EmailService.ServerURL + "/reset-pw?" + vals.Encode()
-	err = u.EmailService.PasswordlessSignin(data.Email, resetURL)
+	signinURL := u.EmailService.ServerURL + "/passwordless-signin?" + vals.Encode()
+	err = u.EmailService.PasswordlessSignin(data.Email, signinURL)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
@@ -211,7 +211,6 @@ func (u Users) ProcessEmailSignin(w http.ResponseWriter, r *http.Request) {
 		Token string
 	}
 	data.Token = r.FormValue("token")
-	fmt.Println("😍😍😍😍😍😍😍😍😍😍😍", data.Token, "😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍😍")
 	user, err := u.PasswordResetService.Consume(data.Token)
 	if err != nil {
 		fmt.Println(err)

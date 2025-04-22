@@ -19,7 +19,7 @@ import (
 
 type config struct {
 	PSQL models.PostgresConfig
-	SMTP models.SMTPConfig
+	Mail models.MailConfig
 	CSRF struct {
 		Key    string
 		Secure bool
@@ -46,14 +46,8 @@ func loadEnvConfig() (config, error) {
 		SSLMode:  os.Getenv("PSQL_SSL_MODE"),
 	}
 
-	cfg.SMTP.Host = os.Getenv("SMTP_HOST")
-	portStr := os.Getenv("SMTP_PORT")
-	cfg.SMTP.Port, err = strconv.Atoi(portStr)
-	if err != nil {
-		return cfg, err
-	}
-	cfg.SMTP.Username = os.Getenv("SMTP_USERNAME")
-	cfg.SMTP.Password = os.Getenv("SMTP_PASSWORD")
+	cfg.Mail.SendEndpoint = os.Getenv("MAIL_SEND_ENDPOINT")
+	cfg.Mail.Token = os.Getenv("MAIL_TOKEN")
 
 	cfg.CSRF.Key = os.Getenv("CSRF_KEY")
 	secureStr := os.Getenv("CSRF_SECURE")
@@ -107,7 +101,11 @@ func run(cfg config) error {
 	pwResetService := &models.PasswordResetService{
 		DB: db,
 	}
-	emailService := models.NewEmailService(cfg.SMTP, cfg.Server.URL)
+	emailService := &models.EmailService{
+		ServerURL:    cfg.Server.URL,
+		SendEndpoint: cfg.Mail.SendEndpoint,
+		Token:        cfg.Mail.Token,
+	}
 	galleriesService := &models.GalleryService{
 		DB: db,
 	}

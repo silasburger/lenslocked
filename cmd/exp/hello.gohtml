@@ -1,7 +1,0 @@
-
-{{range .}}
-<h1> hello, {{.Name}}, {{.Age}}</h1>
-
-<p>{{range $key, $value := .Inventory }} - {{ $key }}: {{$value}} {{if eq $value "red" }} poison! {{ end }}</p>
-{{end}}
-{{end}}

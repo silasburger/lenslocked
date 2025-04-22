@@ -1,66 +1,91 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-
-	"github.com/go-mail/mail/v2"
+	"io"
+	"net/http"
+	"net/url"
 )
 
 const (
 	DefaultSender = "support@lenslocked.silasburger.com"
 )
 
-type SMTPConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
+type MailConfig struct {
+	SendEndpoint string
+	Token        string
 }
 
 type Email struct {
-	To        string
-	From      string
-	Subject   string
-	Plaintext string
-	HTML      string
+	To      string
+	From    string
+	Subject string
+	Text    string
+	HTML    string
 }
 
 type EmailService struct {
 	DefaultSender string
-	Dialer        *mail.Dialer
 	ServerURL     string
-}
-
-func NewEmailService(config SMTPConfig, serverURL string) *EmailService {
-	es := EmailService{
-		Dialer:    mail.NewDialer(config.Host, config.Port, config.Username, config.Password),
-		ServerURL: serverURL,
-	}
-	return &es
+	SendEndpoint  string
+	Token         string
 }
 
 func (es EmailService) Send(email Email) error {
-	msg := mail.NewMessage()
-	msg.SetHeader("To", email.To)
-	msg.SetHeader("Subject", email.Subject)
-	es.setFrom(msg, email)
-	switch {
-	case email.Plaintext != "" && email.HTML != "":
-		msg.SetBody("text/html", email.HTML)
-		msg.AddAlternative("text/plain", email.Plaintext, mail.SetPartEncoding(mail.Base64))
-	case email.Plaintext != "":
-		msg.SetBody("text/plain", email.Plaintext, mail.SetPartEncoding(mail.Base64))
-	case email.HTML != "":
-		msg.SetBody("text/html", email.HTML)
+	type Address struct {
+		Email string
+		Name  string
 	}
-	err := es.Dialer.DialAndSend(msg)
+
+	type Data struct {
+		To      []Address
+		From    Address
+		Subject string
+		Text    string
+		HTML    string
+	}
+	var body Data
+	body.Subject = email.Subject
+	body.Text = email.Text
+	body.HTML = email.HTML
+	to := Address{Email: email.To, Name: ""}
+	body.To = []Address{to}
+	body.From = Address{Email: es.setFrom(email), Name: ""}
+	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("Send: %w", err)
+	}
+	url, err := url.Parse(es.SendEndpoint)
+	if err != nil {
+		return fmt.Errorf("Send: %w", err)
+	}
+	req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(bodyJSON))
+	if err != nil {
+		return fmt.Errorf("Send: %w", err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Api-Token", es.Token)
+	client := http.DefaultClient
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("Send: %w", err)
+	}
+	ok := res.StatusCode >= 200 && res.StatusCode < 300
+	if !ok {
+		body, err := io.ReadAll(res.Body)
+		defer res.Body.Close()
+		if err != nil {
+			return fmt.Errorf("send: %w", err)
+		}
+		return fmt.Errorf("Send: HTTP %d: %s", res.StatusCode, string(body))
 	}
 	return nil
 }
 
-func (es EmailService) setFrom(msg *mail.Message, email Email) {
+func (es EmailService) setFrom(email Email) string {
 	var from string
 	switch {
 	case email.From != "":
@@ -70,7 +95,7 @@ func (es EmailService) setFrom(msg *mail.Message, email Email) {
 	default:
 		from = DefaultSender
 	}
-	msg.SetHeader("From", from)
+	return from
 }
 
 func (es EmailService) ForgotPassword(to, resetURL string) error {
@@ -78,16 +103,16 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 	<html>
 	<body>
 		<p>o reset your password please visit the following URL:</p>
-		<a href="https://%s">Reset Password</a>
+		<a href="%s">Reset Password</a>
 	</body>
 	</html>
 	`, resetURL)
 	plaintextBody := fmt.Sprintf("To reset your password please visit the following URL: %s", resetURL)
 	email := Email{
-		To:        to,
-		Subject:   "Reset your password",
-		Plaintext: plaintextBody,
-		HTML:      htmlBody,
+		To:      to,
+		Subject: "Reset your password",
+		Text:    plaintextBody,
+		HTML:    htmlBody,
 	}
 	err := es.Send(email)
 	if err != nil {
@@ -96,21 +121,21 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 	return nil
 }
 
-func (es EmailService) PasswordlessSignin(to, resetURL string) error {
+func (es EmailService) PasswordlessSignin(to, signinURL string) error {
 	htmlBody := fmt.Sprintf(`
 		<html>
 		<body>
 			<p>Click below to sign in to your account:</p>
-			<a href="https://%s">Sign in</a>
+			<a href="%s">Sign in</a>
 		</body>
 		</html>
-		`, resetURL)
-	plaintextBody := fmt.Sprintf("To sign in to your account visit following URL: %s", resetURL)
+		`, signinURL)
+	plaintextBody := fmt.Sprintf("To sign in to your account visit following URL: %s", signinURL)
 	email := Email{
-		To:        to,
-		Subject:   "Sign in link",
-		Plaintext: plaintextBody,
-		HTML:      htmlBody,
+		To:      to,
+		Subject: "Sign in link",
+		Text:    plaintextBody,
+		HTML:    htmlBody,
 	}
 	err := es.Send(email)
 	if err != nil {
