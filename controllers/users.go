@@ -196,7 +196,7 @@ func (u Users) ProcessPasswordlessSignin(w http.ResponseWriter, r *http.Request)
 	vals := url.Values{
 		"token": {pwReset.Token},
 	}
-	signinURL := u.EmailService.ServerURL + "/passwordless-signin?" + vals.Encode()
+	signinURL := u.EmailService.ServerURL + "/email-signin?" + vals.Encode()
 	err = u.EmailService.PasswordlessSignin(data.Email, signinURL)
 	if err != nil {
 		fmt.Println(err)
