@@ -52,11 +52,7 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 		HTML:    htmlBody,
 	}
 	email.From = es.setFrom(email)
-	req, err := es.EmailAPI.Dial(email)
-	if err != nil {
-		return fmt.Errorf("ForgotPassword: %w", err)
-	}
-	err = es.Send(req)
+	err := es.Send(email)
 	if err != nil {
 		return fmt.Errorf("ForgotPassword: %w", err)
 	}
@@ -80,20 +76,20 @@ func (es EmailService) PasswordlessSignin(to, signinURL string) error {
 		HTML:    htmlBody,
 	}
 	email.From = es.setFrom(email)
-	req, err := es.EmailAPI.Dial(email)
-	if err != nil {
-		return fmt.Errorf("PasswordlessSignin: %w", err)
-	}
-	err = es.Send(req)
+	err := es.Send(email)
 	if err != nil {
 		return fmt.Errorf("PasswordlessSignin: %w", err)
 	}
 	return nil
 }
 
-func (es EmailService) Send(req *http.Request) error {
+func (es EmailService) Send(email Email) error {
+	emailReq, err := es.EmailAPI.Dial(email)
+	if err != nil {
+		return fmt.Errorf("send: %w", err)
+	}
 	client := http.DefaultClient
-	res, err := client.Do(req)
+	res, err := client.Do(emailReq)
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}
