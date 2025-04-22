@@ -1,12 +1,9 @@
 package models
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 )
 
 const (
@@ -31,71 +28,11 @@ type EmailService struct {
 	ServerURL     string
 	SendEndpoint  string
 	Token         string
+	EmailAPI
 }
 
-func (es EmailService) Send(email Email) error {
-	type Address struct {
-		Email string
-		Name  string
-	}
-
-	type Data struct {
-		To      []Address
-		From    Address
-		Subject string
-		Text    string
-		HTML    string
-	}
-	var body Data
-	body.Subject = email.Subject
-	body.Text = email.Text
-	body.HTML = email.HTML
-	to := Address{Email: email.To, Name: ""}
-	body.To = []Address{to}
-	body.From = Address{Email: es.setFrom(email), Name: ""}
-	bodyJSON, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("Send: %w", err)
-	}
-	url, err := url.Parse(es.SendEndpoint)
-	if err != nil {
-		return fmt.Errorf("Send: %w", err)
-	}
-	req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(bodyJSON))
-	if err != nil {
-		return fmt.Errorf("Send: %w", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Api-Token", es.Token)
-	client := http.DefaultClient
-	res, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("Send: %w", err)
-	}
-	ok := res.StatusCode >= 200 && res.StatusCode < 300
-	if !ok {
-		body, err := io.ReadAll(res.Body)
-		defer res.Body.Close()
-		if err != nil {
-			return fmt.Errorf("send: %w", err)
-		}
-		return fmt.Errorf("Send: HTTP %d: %s", res.StatusCode, string(body))
-	}
-	return nil
-}
-
-func (es EmailService) setFrom(email Email) string {
-	var from string
-	switch {
-	case email.From != "":
-		from = email.From
-	case es.DefaultSender != "":
-		from = es.DefaultSender
-	default:
-		from = DefaultSender
-	}
-	return from
+type EmailAPI interface {
+	Dial(email Email) (*http.Request, error)
 }
 
 func (es EmailService) ForgotPassword(to, resetURL string) error {
@@ -114,7 +51,12 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 		Text:    plaintextBody,
 		HTML:    htmlBody,
 	}
-	err := es.Send(email)
+	email.From = es.setFrom(email)
+	req, err := es.EmailAPI.Dial(email)
+	if err != nil {
+		return fmt.Errorf("ForgotPassword: %w", err)
+	}
+	err = es.Send(req)
 	if err != nil {
 		return fmt.Errorf("ForgotPassword: %w", err)
 	}
@@ -137,9 +79,45 @@ func (es EmailService) PasswordlessSignin(to, signinURL string) error {
 		Text:    plaintextBody,
 		HTML:    htmlBody,
 	}
-	err := es.Send(email)
+	email.From = es.setFrom(email)
+	req, err := es.EmailAPI.Dial(email)
 	if err != nil {
-		return fmt.Errorf("SendSignin: %w", err)
+		return fmt.Errorf("PasswordlessSignin: %w", err)
+	}
+	err = es.Send(req)
+	if err != nil {
+		return fmt.Errorf("PasswordlessSignin: %w", err)
 	}
 	return nil
+}
+
+func (es EmailService) Send(req *http.Request) error {
+	client := http.DefaultClient
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send: %w", err)
+	}
+	ok := res.StatusCode >= 200 && res.StatusCode < 300
+	if !ok {
+		body, err := io.ReadAll(res.Body)
+		defer res.Body.Close()
+		if err != nil {
+			return fmt.Errorf("send: %w", err)
+		}
+		return fmt.Errorf("send: HTTP %d: %s", res.StatusCode, string(body))
+	}
+	return nil
+}
+
+func (es EmailService) setFrom(email Email) string {
+	var from string
+	switch {
+	case email.From != "":
+		from = email.From
+	case es.DefaultSender != "":
+		from = es.DefaultSender
+	default:
+		from = DefaultSender
+	}
+	return from
 }

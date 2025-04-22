@@ -101,10 +101,11 @@ func run(cfg config) error {
 	pwResetService := &models.PasswordResetService{
 		DB: db,
 	}
+
+	mailTrap := &models.MailTrap{SendEndpoint: cfg.Mail.SendEndpoint, Token: cfg.Mail.Token}
 	emailService := &models.EmailService{
-		ServerURL:    cfg.Server.URL,
-		SendEndpoint: cfg.Mail.SendEndpoint,
-		Token:        cfg.Mail.Token,
+		ServerURL: cfg.Server.URL,
+		EmailAPI:  mailTrap,
 	}
 	galleriesService := &models.GalleryService{
 		DB: db,
