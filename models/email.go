@@ -2,8 +2,6 @@ package models
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 )
 
 const (
@@ -28,13 +26,20 @@ type EmailService struct {
 	ServerURL     string
 	SendEndpoint  string
 	Token         string
-	EmailAPI
+	Emailer
 }
 
-type EmailAPI interface {
-	Dial(email Email) (*http.Request, error)
+type Emailer interface {
+	DialAndSend(email *Email) error
 }
 
+func NewEmailService(emailer Emailer, serverURL string) *EmailService {
+	es := EmailService{
+		Emailer:   emailer,
+		ServerURL: serverURL,
+	}
+	return &es
+}
 func (es EmailService) ForgotPassword(to, resetURL string) error {
 	htmlBody := fmt.Sprintf(`
 	<html>
@@ -45,7 +50,7 @@ func (es EmailService) ForgotPassword(to, resetURL string) error {
 	</html>
 	`, resetURL)
 	plaintextBody := fmt.Sprintf("To reset your password please visit the following URL: %s", resetURL)
-	email := Email{
+	email := &Email{
 		To:      to,
 		Subject: "Reset your password",
 		Text:    plaintextBody,
@@ -69,7 +74,7 @@ func (es EmailService) PasswordlessSignin(to, signinURL string) error {
 		</html>
 		`, signinURL)
 	plaintextBody := fmt.Sprintf("To sign in to your account visit following URL: %s", signinURL)
-	email := Email{
+	email := &Email{
 		To:      to,
 		Subject: "Sign in link",
 		Text:    plaintextBody,
@@ -83,29 +88,15 @@ func (es EmailService) PasswordlessSignin(to, signinURL string) error {
 	return nil
 }
 
-func (es EmailService) Send(email Email) error {
-	emailReq, err := es.EmailAPI.Dial(email)
+func (es EmailService) Send(email *Email) error {
+	err := es.Emailer.DialAndSend(email)
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
-	}
-	client := http.DefaultClient
-	res, err := client.Do(emailReq)
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-	ok := res.StatusCode >= 200 && res.StatusCode < 300
-	if !ok {
-		body, err := io.ReadAll(res.Body)
-		defer res.Body.Close()
-		if err != nil {
-			return fmt.Errorf("send: %w", err)
-		}
-		return fmt.Errorf("send: HTTP %d: %s", res.StatusCode, string(body))
 	}
 	return nil
 }
 
-func (es EmailService) setFrom(email Email) string {
+func (es EmailService) setFrom(email *Email) string {
 	var from string
 	switch {
 	case email.From != "":

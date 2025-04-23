@@ -103,10 +103,8 @@ func run(cfg config) error {
 	}
 
 	mailTrap := &models.MailTrap{SendEndpoint: cfg.Mail.SendEndpoint, Token: cfg.Mail.Token}
-	emailService := &models.EmailService{
-		ServerURL: cfg.Server.URL,
-		EmailAPI:  mailTrap,
-	}
+	emailService := models.NewEmailService(mailTrap, cfg.Server.URL)
+
 	galleriesService := &models.GalleryService{
 		DB: db,
 	}
